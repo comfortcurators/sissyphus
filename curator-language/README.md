@@ -1,27 +1,21 @@
-# Curator Language
+# Curator Language Doctrine
 
-The first language layer emerging from intent and pattern.
+00, there is no.
 
-## Origin
+From nothing, two inevitabilities emerge:
 
-Intent becomes expression.
-Expression becomes pattern.
-Pattern becomes reusable abstraction.
+**Intent.**
 
-This is the beginning of a language experiment.
+**Pattern.**
 
-## First principles
+They do not exist separately. They emerge from each other, weave into each other, and become the basis of every expression that follows.
 
-```
-INTENT
-  ↓
-PATTERN
-  ↓
-LANGUAGE
-  ↓
-EXECUTION
-```
+Any commit to this repository carries the same two inevitabilities:
 
-Initial question:
+- intent emerging into form
+- pattern emerging from form
 
-How does a system express, preserve, and transform intent into action?
+There is no larger grammar before them.
+There is no layer above them.
+
+The language is the continuous weaving of intent and pattern.
