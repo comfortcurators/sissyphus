@@ -11,11 +11,11 @@ from .parse import ParseError, parse
 
 
 def main(argv: list[str] | None = None) -> int:
-    p = argparse.ArgumentParser(prog="ya-ra", description="YA|RA checker and backends")
+    p = argparse.ArgumentParser(prog="ya-ra", description="YA|RA rv0.1.0 — Intent | Pattern | Signed")
     p.add_argument("--rv", action="version", version=RV)
     sub = p.add_subparsers(dest="cmd", required=True)
 
-    pc = sub.add_parser("check", help="parse and run checks")
+    pc = sub.add_parser("check", help="measure the door")
     pc.add_argument("file")
     pc.add_argument("--root", default=".")
 
@@ -37,17 +37,19 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.cmd == "parse":
         print(door.rv)
+        print(f"measure {door.measure}")
         print(f"Intent : {door.intent}")
         print(f"Pattern: {door.pattern}")
         print(f"Signed. {door.signer} / {door.timestamp}")
         for c in door.checks:
-            print(f"⊦ {c.kind} {' '.join(c.args)}")
+            amp = f" amp {c.amp}" if c.amp is not None else ""
+            print(f"⊦ {c.kind} {' '.join(c.args)}{amp}")
         return 0
 
     if args.cmd == "check":
         result = check(door, root=Path(args.root))
         if result.ok:
-            print("ok")
+            print(f"{door.rv} measure {result.measure} ok")
             return 0
         for err in result.errors:
             print(f"contradicted: {err}", file=sys.stderr)
