@@ -107,7 +107,7 @@ class TestYA_RA(unittest.TestCase):
         self.assertTrue(out.cut.refused)
         r = _run(["measure", "--root", str(ROOT), "--action"])
         self.assertNotEqual(r.returncode, 0)
-        self.assertEqual(RV, "rv0.3.0")
+        self.assertEqual(RV, "rv0.3")
 
 
 if __name__ == "__main__":

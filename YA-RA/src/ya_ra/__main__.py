@@ -27,7 +27,7 @@ def _load(file: str | None, root: Path) -> object:
 
 
 def main(argv: list[str] | None = None) -> int:
-    p = argparse.ArgumentParser(prog="YA|RA", description="YA|RA language rv0.3.0")
+    p = argparse.ArgumentParser(prog="YA|RA", description="YA|RA language rv0.3")
     p.add_argument("--rv", action="version", version=RV)
     sub = p.add_subparsers(dest="cmd", required=True)
 
