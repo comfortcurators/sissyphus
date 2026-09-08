@@ -39,6 +39,7 @@ class Door:
     measure: str = "all"
     zero: bool = False
     glimpse: bool = False
+    cut: bool = False
     checks: list[Check] = field(default_factory=list)
     source: str = ""
     used: list[Door] = field(default_factory=list)
