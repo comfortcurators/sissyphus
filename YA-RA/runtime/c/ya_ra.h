@@ -46,6 +46,8 @@ struct yara_shot {
 extern struct yara_shot yara_shots[YARA_MAX_SHOTS];
 extern int yara_nshots;
 
+extern int yara_missing_provenance; /* 1 when signer is absent; not a fail */
+
 int yara_words(const char *s);
 int yara_measure(const struct yara_door *d);
 

@@ -14,6 +14,7 @@
 
 struct yara_shot yara_shots[YARA_MAX_SHOTS];
 int yara_nshots = 0;
+int yara_missing_provenance = 0;
 
 int yara_words(const char *s) {
   int n = 0, in = 0;
@@ -86,8 +87,10 @@ static int run_check(const struct yara_door *d, const struct yara_check *c) {
 
 int yara_measure(const struct yara_door *d) {
   yara_nshots = 0;
-  if (!d || !d->intent || !d->pattern || !d->signer) return YARA_FAIL;
-  if (!d->signer[0]) return YARA_FAIL;
+  yara_missing_provenance = 0;
+  if (!d || !d->intent || !d->pattern) return YARA_FAIL;
+  /* Signed is envelope. Empty signer is missing provenance, not YARA_FAIL. */
+  if (!d->signer || !d->signer[0]) yara_missing_provenance = 1;
   if (yara_words(d->intent) > 17) return YARA_FAIL;
   if (yara_words(d->pattern) > 17) return YARA_FAIL;
 
