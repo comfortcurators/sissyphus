@@ -1,0 +1,11 @@
+[project]
+name = "ya-ra"
+version = "1"
+description = "Executable YA|RA — Intent | Pattern | Signed. Public version token: rv1."
+requires-python = ">=3.10"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[project.scripts]
+ya-ra = "ya_ra.__main__:main"
