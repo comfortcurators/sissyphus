@@ -35,6 +35,9 @@ class Outcome:
     refusals: list[str] = field(default_factory=list)
     missing_provenance: bool = False
     cut: Cut | None = None
+    what_is: str = ""
+    what_became: str = ""
+    aforementioned: str = ""
 
 
 def _words(s: str) -> int:
@@ -86,6 +89,13 @@ def measure(
     if cut.refused:
         refusals.append(cut.reason)
     ok = checks_ok and not errors and not refusals
+    what_is, what_became, aforementioned = _plane(door, root)
+    if ok and (door.cura or door.universe) and aforementioned:
+        (root / "aforementioned.YA-RA").write_text(
+            "Intent : What is was seen. Change already moved.\n"
+            "Pattern: weaved within aforementioned.\n",
+            encoding="utf-8",
+        )
     return Outcome(
         ok=ok,
         shots=shots,
@@ -96,6 +106,9 @@ def measure(
         refusals=refusals,
         missing_provenance=missing_prov,
         cut=cut,
+        what_is=what_is,
+        what_became=what_became,
+        aforementioned=aforementioned,
     )
 
 
@@ -170,3 +183,30 @@ def _run_one(
             return Shot(False, f"use {c.args[0]} refused", c.amp, c.kind, "refuse")
         return Shot(out.ok, "ok" if out.ok else f"use {c.args[0]} contradicted", c.amp, c.kind, "pass" if out.ok else "fail")
     return Shot(False, f"unknown {c.kind}", c.amp, c.kind, "fail")
+
+
+def _plane(door: Door, root: Path) -> tuple[str, str, str]:
+    used: list[Door] = []
+    for c in door.checks:
+        if c.kind != "use":
+            continue
+        try:
+            path = confined(root, c.args[0])
+        except PathEscape:
+            continue
+        if not path.is_file():
+            continue
+        try:
+            used.append(parse(path.read_text(encoding="utf-8"), source=str(path)))
+        except (ParseError, OSError):
+            continue
+    door.used = used
+    if not used:
+        return door.intent, "", ""
+
+    def name(d: Door) -> str:
+        return Path(d.source).name.lower()
+
+    what_is = next((d for d in used if "what-is" in name(d)), used[0])
+    what_became = next((d for d in used if "became" in name(d)), used[-1])
+    return what_is.intent, what_became.intent, f"{what_is.intent} | {what_became.intent}"

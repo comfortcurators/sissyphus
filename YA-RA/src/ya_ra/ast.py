@@ -41,6 +41,7 @@ class Door:
     glimpse: bool = False
     cut: bool = False
     universe: bool = False
+    cura: bool = False
     checks: list[Check] = field(default_factory=list)
     source: str = ""
     used: list[Door] = field(default_factory=list)
