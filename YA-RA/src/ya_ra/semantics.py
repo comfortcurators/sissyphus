@@ -13,12 +13,31 @@ CANONICAL = {
     "measure any": "one passing check keeps the Intent unless a refusal occurred",
 }
 
+# `weakened` is a real cell, distinct from `preserved` and from `unsupported`:
+# the backend produces *a* result for the check, but not the canonical one,
+# because it drops a guarantee the canonical semantics require. rv0.3 marked
+# these `preserved`, which is exactly the silent weakening the conformance
+# table exists to forbid: the C and C++ runtimes take no measure root and do
+# raw access()/fopen(), so `exists`/`contains`/`eq` are unconfined, and they
+# call system() with no capability gate, so `run` ignores allow_run.
+WEAKENED_HOSTED = {
+    "exists": "weakened: no root confinement",
+    "contains": "weakened: no root confinement",
+    "eq": "weakened: no root confinement",
+    "run": "weakened: executed unconditionally, allow_run not honoured",
+}
+
 CONFORMANCE = {
     "python-measure": {k: "preserved" for k in CANONICAL},
     "python-emit": {k: "preserved" for k in CANONICAL},
-    "c": {**{k: "preserved" for k in CANONICAL}, "use": "unsupported"},
-    "cxx": {**{k: "preserved" for k in CANONICAL}, "use": "unsupported"},
-    "rust": {**{k: "preserved" for k in CANONICAL}, "use": "unsupported", "measure any": "unsupported"},
+    "c": {**{k: "preserved" for k in CANONICAL}, **WEAKENED_HOSTED, "use": "unsupported"},
+    "cxx": {**{k: "preserved" for k in CANONICAL}, **WEAKENED_HOSTED, "use": "unsupported"},
+    "rust": {
+        **{k: "preserved" for k in CANONICAL},
+        **WEAKENED_HOSTED,
+        "use": "unsupported",
+        "measure any": "unsupported",
+    },
     "kernel": {
         "words": "preserved",
         "exists": "unsupported",
@@ -39,7 +58,7 @@ CONFORMANCE = {
         "measure all": "preserved",
         "measure any": "unsupported",
     },
-    "toe": {**{k: "preserved" for k in CANONICAL}, "use": "unsupported"},
+    "toe": {**{k: "preserved" for k in CANONICAL}, **WEAKENED_HOSTED, "use": "unsupported"},
     "quantum": {k: "observational" for k in CANONICAL},
     "llm": {k: "transport" for k in CANONICAL},
 }

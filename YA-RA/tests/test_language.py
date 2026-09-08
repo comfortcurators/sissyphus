@@ -17,6 +17,8 @@ from ya_ra.emit import UnsupportedSemantic, emit
 from ya_ra.measure import measure
 from ya_ra.parse import parse
 from ya_ra.root import from_root
+from ya_ra.semantics import CANONICAL, CONFORMANCE
+from ya_ra.toe import project as toe_project
 
 
 def _run(args):
@@ -112,3 +114,82 @@ class TestYA_RA(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+# ---------------------------------------------------------------------------
+# rv0.3 fixes: the write capability, the TOE cross-backend split, and the
+# conformance table that called a weakened cell preserved.
+# ---------------------------------------------------------------------------
+
+
+class TestWriteCapability(unittest.TestCase):
+    """`run` needed --allow-run; the cura/universe write needed nothing at all."""
+
+    def _cura_root(self) -> Path:
+        """A real cura plane: `aforementioned` is only non-empty when the door
+        actually `use`s sibling doors, so a bare cura door never reaches the
+        write at all and would prove nothing."""
+        d = Path(tempfile.mkdtemp())
+        shutil.copytree(Path("programs/cura"), d / "cura")
+        root = d / "cura"
+        (root / "aforementioned.YA-RA").unlink(missing_ok=True)
+        return root
+
+    def test_write_is_refused_without_the_capability(self):
+        root = self._cura_root()
+        door = parse((root / "main.YA-RA").read_text(encoding="utf-8"), source=str(root))
+        out = measure(door, root=root)
+        self.assertFalse((root / "aforementioned.YA-RA").exists())
+        self.assertTrue(any("allow-write" in r for r in out.refusals))
+
+    def test_write_happens_when_granted(self):
+        root = self._cura_root()
+        door = parse((root / "main.YA-RA").read_text(encoding="utf-8"), source=str(root))
+        out = measure(door, root=root, allow_write=True)
+        if out.aforementioned:
+            self.assertTrue((root / "aforementioned.YA-RA").exists())
+
+    def test_allow_run_alone_does_not_grant_a_writer(self):
+        root = self._cura_root()
+        door = parse((root / "main.YA-RA").read_text(encoding="utf-8"), source=str(root))
+        measure(door, root=root, allow_run=True)
+        self.assertFalse((root / "aforementioned.YA-RA").exists())
+
+
+class TestToeAgreesAcrossBackends(unittest.TestCase):
+    """An unsigned door is missing-provenance in Python and must be so in C."""
+
+    def test_python_does_not_refuse_an_unsigned_door(self):
+        door = parse("Intent : unsigned\nPattern: still language\n")
+        cut = toe_project(door, [1 + 0j], [True])
+        self.assertFalse(cut.refused)
+        self.assertTrue(cut.missing_provenance)
+
+    def test_c_runtime_no_longer_refuses_on_an_empty_signer(self):
+        src = Path("runtime/toe/toe.h").read_text(encoding="utf-8")
+        self.assertNotIn("|| !c->signer || !c->signer[0]", src)
+        self.assertIn("missing_provenance", src)
+
+    def test_c_runtime_still_refuses_the_unsigned_action(self):
+        src = Path("runtime/toe/toe.h").read_text(encoding="utf-8")
+        self.assertIn("c->action_is_door", src)
+
+
+class TestConformanceIsHonest(unittest.TestCase):
+    """A backend that drops a canonical guarantee is not `preserved`."""
+
+    def test_hosted_backends_do_not_claim_to_preserve_confinement(self):
+        for target in ("c", "cxx", "rust"):
+            for kind in ("exists", "contains", "eq"):
+                self.assertNotEqual(
+                    CONFORMANCE[target][kind], "preserved",
+                    f"{target}/{kind} claims preserved but has no root confinement",
+                )
+
+    def test_hosted_backends_do_not_claim_to_preserve_the_run_gate(self):
+        for target in ("c", "cxx", "rust"):
+            self.assertNotEqual(CONFORMANCE[target]["run"], "preserved")
+
+    def test_python_measure_still_preserves_everything(self):
+        for kind in CANONICAL:
+            self.assertEqual(CONFORMANCE["python-measure"][kind], "preserved")

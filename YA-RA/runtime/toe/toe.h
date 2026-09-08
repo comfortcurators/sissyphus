@@ -5,7 +5,13 @@
  *
  * Instead it computes a signed sum over attributed checks:
  *   Z = Σ_k amp_k · [check_k passed]
- * Refuse if there is no signer, or if action_is_door.
+ * Refuse only action_is_door. An empty signer is missing provenance, not a
+ * refusal — the Python toe.project() is canonical here and refuses solely on
+ * action_is_door, and "unsigned is still language" is the whole stance. This
+ * runtime used to additionally refuse on an empty signer, so the same unsigned
+ * door was not-refused under `ya-ra measure` and refused under an emitted
+ * `--to toe` program: a silent cross-backend split on the one construct the
+ * language insists remains valid.
  * Polarity: 0 = ok.
  */
 #ifndef YA_RA_TOE_H
@@ -34,6 +40,7 @@ struct yara_toe_z {
   double im;
   int nterms;
   int refused;
+  int missing_provenance;
 };
 
 static inline int yara_toe_project(
@@ -46,7 +53,14 @@ static inline int yara_toe_project(
   z->im = 0;
   z->nterms = n;
   z->refused = 0;
-  if (!c || c->action_is_door || !c->signer || !c->signer[0]) {
+  z->missing_provenance = 0;
+  if (!c) {
+    z->refused = 1;
+    return YARA_FAIL;
+  }
+  /* Envelope, not language. Record it; do not refuse on it. */
+  if (!c->signer || !c->signer[0]) z->missing_provenance = 1;
+  if (c->action_is_door) {
     z->refused = 1;
     return YARA_FAIL;
   }
