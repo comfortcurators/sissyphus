@@ -14,6 +14,11 @@ class Check:
     kind: str
     args: list[str]
     amp: complex = 1 + 0j
+    #: Name this check's value is bound to, from a trailing `as NAME`.
+    #: None means the value is discarded, which was the only behaviour
+    #: before binding existed: every check answered pass/fail and whatever
+    #: it had read died with the answer.
+    bind: str | None = None
 
 
 @dataclass

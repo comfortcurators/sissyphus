@@ -11,6 +11,7 @@ CANONICAL = {
     "use": "confined path is a YA|RA expression; parse and measure it under the same policy; pass iff the child outcome is ok",
     "measure all": "every check must pass; one fail contradicts the Intent; a refusal also contradicts",
     "measure any": "one passing check keeps the Intent unless a refusal occurred",
+    "bind": "a check may name what it read (`as NAME`); a later check may use $NAME as an argument. Evaluation is left to right and the name is visible only after it is bound",
 }
 
 # `weakened` is a real cell, distinct from `preserved` and from `unsupported`:
@@ -29,14 +30,19 @@ WEAKENED_HOSTED = {
 
 CONFORMANCE = {
     "python-measure": {k: "preserved" for k in CANONICAL},
-    "python-emit": {k: "preserved" for k in CANONICAL},
-    "c": {**{k: "preserved" for k in CANONICAL}, **WEAKENED_HOSTED, "use": "unsupported"},
-    "cxx": {**{k: "preserved" for k in CANONICAL}, **WEAKENED_HOSTED, "use": "unsupported"},
+    # The emitters flatten checks at emit time and have no environment, so a
+    # name substituted at measure time is not a thing they can carry. This is
+    # the honest cell, not a placeholder: binding is the one canonical
+    # semantic no backend but python-measure currently preserves.
+    "python-emit": {**{k: "preserved" for k in CANONICAL}, "bind": "unsupported"},
+    "c": {**{k: "preserved" for k in CANONICAL}, **WEAKENED_HOSTED, "use": "unsupported", "bind": "unsupported"},
+    "cxx": {**{k: "preserved" for k in CANONICAL}, **WEAKENED_HOSTED, "use": "unsupported", "bind": "unsupported"},
     "rust": {
         **{k: "preserved" for k in CANONICAL},
         **WEAKENED_HOSTED,
         "use": "unsupported",
         "measure any": "unsupported",
+        "bind": "unsupported",
     },
     "kernel": {
         "words": "preserved",
@@ -47,6 +53,7 @@ CONFORMANCE = {
         "use": "unsupported",
         "measure all": "preserved",
         "measure any": "unsupported",
+        "bind": "unsupported",
     },
     "wasm": {
         "words": "preserved",
@@ -57,8 +64,9 @@ CONFORMANCE = {
         "use": "unsupported",
         "measure all": "preserved",
         "measure any": "unsupported",
+        "bind": "unsupported",
     },
-    "toe": {**{k: "preserved" for k in CANONICAL}, **WEAKENED_HOSTED, "use": "unsupported"},
+    "toe": {**{k: "preserved" for k in CANONICAL}, **WEAKENED_HOSTED, "use": "unsupported", "bind": "unsupported"},
     "quantum": {k: "observational" for k in CANONICAL},
     "llm": {k: "transport" for k in CANONICAL},
 }

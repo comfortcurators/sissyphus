@@ -18,6 +18,9 @@ _RV = re.compile(r"^rv\s*(\d+(?:\.\d+){0,2})$", re.I)
 _MEASURE = re.compile(r"^measure\s+(all|any)$", re.I)
 _USE = re.compile(r"^use\s+(\S+)$", re.I)
 _AMP = re.compile(r"^(.*?)\s+amp\s+(\S+)\s*$")
+# `as NAME` binds what the check read, so a later check can use it. It composes
+# with `amp` in either order: both are trailing modifiers on the same line.
+_AS = re.compile(r"^(.*?)\s+as\s+([A-Za-z_][A-Za-z0-9_]*)\s*$")
 
 
 def parse(src: str, source: str = "") -> Door:
@@ -103,17 +106,27 @@ def parse(src: str, source: str = "") -> Door:
             raise ParseError(f"line {n}: {s!r}")
         kind, rest = cm.group(1), (cm.group(2) or "").strip()
         amp = 1 + 0j
-        am = _AMP.match(rest)
-        if am:
-            rest = am.group(1).strip()
-            try:
-                amp = complex(am.group(2).replace("i", "j"))
-            except ValueError as e:
-                raise ParseError(f"line {n}: bad amp") from e
+        bind: str | None = None
+        # Strip trailing modifiers until neither matches, so `amp 1 as X` and
+        # `as X amp 1` both parse. Each may appear at most once.
+        while True:
+            sm2 = _AS.match(rest)
+            if sm2 and bind is None:
+                rest, bind = sm2.group(1).strip(), sm2.group(2)
+                continue
+            am = _AMP.match(rest)
+            if am and amp == 1 + 0j:
+                rest = am.group(1).strip()
+                try:
+                    amp = complex(am.group(2).replace("i", "j"))
+                except ValueError as e:
+                    raise ParseError(f"line {n}: bad amp") from e
+                continue
+            break
         if kind not in CHECK_KINDS:
             raise ParseError(f"line {n}: unknown check {kind!r}")
         args = _split_args(kind, rest, n)
-        door.checks.append(Check(kind=kind, args=args, amp=amp))
+        door.checks.append(Check(kind=kind, args=args, amp=amp, bind=bind))
 
     try:
         typecheck(door)

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 import subprocess
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -22,6 +23,9 @@ class Shot:
     amp: complex
     kind: str = ""
     status: str = "fail"
+    #: What the check read, when it was asked to name it (`as NAME`).
+    #: None when unbound — which was every check before binding existed.
+    value: object = None
 
 
 @dataclass
@@ -69,15 +73,22 @@ def measure(
     if require_provenance and missing_prov:
         refusals.append("missing provenance")
 
+    # LEFT TO RIGHT, AND THAT IS THE SEMANTIC CHANGE. The list used to be an
+    # unordered set of independent verdicts; it is now a sequence, because a
+    # check may name what it read and a later one may use that name. all/any
+    # still folds pass/fail exactly as before — only the reads thread through.
+    env: dict[str, object] = {}
     for c in door.checks:
-        shots.append(
-            _run_one(
-                door, c, root, _stack,
-                allow_run=allow_run,
-                allow_write=allow_write,
-                require_provenance=require_provenance,
-            )
+        shot = _run_one(
+            door, c, root, _stack,
+            allow_run=allow_run,
+            allow_write=allow_write,
+            require_provenance=require_provenance,
+            env=env,
         )
+        if c.bind is not None and shot.status != "refuse":
+            env[c.bind] = shot.value
+        shots.append(shot)
 
     for s in shots:
         if s.status == "refuse":
@@ -129,6 +140,37 @@ def measure(
     )
 
 
+_NAME = re.compile(r"\$([A-Za-z_][A-Za-z0-9_]*)")
+
+
+class Unbound(Exception):
+    """A check referenced $NAME before any check bound it."""
+
+
+def _subst(arg: str, env: dict[str, object]) -> str:
+    """Replace $NAME with what an earlier check bound.
+
+    An unknown name is refused, never silently emptied: substituting "" would
+    turn `contains $path "x"` into a check against the measure root and answer
+    a question nobody asked.
+
+    A substituted value is stripped of surrounding whitespace, and that is a
+    stated rule rather than a convenience. `contains` yields the file's text,
+    and a file read carries a trailing newline; an argument is a token. Without
+    this, `contains manifest.txt "x" as p` then `exists $p` looks for a path
+    ending in a newline and reports it missing, which is true and useless. The
+    bound VALUE is unstripped — only its use as an argument is.
+    """
+
+    def one(m: "re.Match[str]") -> str:
+        name = m.group(1)
+        if name not in env:
+            raise Unbound(name)
+        return str(env[name]).strip()
+
+    return _NAME.sub(one, arg)
+
+
 def _run_one(
     door: Door,
     c: Check,
@@ -138,26 +180,33 @@ def _run_one(
     allow_run: bool,
     allow_write: bool = False,
     require_provenance: bool,
+    env: dict[str, object] | None = None,
 ) -> Shot:
+    env = env if env is not None else {}
+    try:
+        args = [_subst(a, env) for a in c.args]
+    except Unbound as e:
+        return Shot(False, f"unbound ${e.args[0]}", c.amp, c.kind, "refuse")
+    c = Check(kind=c.kind, args=args, amp=c.amp, bind=c.bind)
     if c.kind == "words":
         text = door.intent if c.args[0] == "intent" else door.pattern
         got = _words(text)
         n = int(c.args[1])
         ok = got <= n
-        return Shot(ok, "ok" if ok else f"{c.args[0]} {got}>{n}", c.amp, c.kind, "pass" if ok else "fail")
+        return Shot(ok, "ok" if ok else f"{c.args[0]} {got}>{n}", c.amp, c.kind, "pass" if ok else "fail", got)
     if c.kind == "exists":
         try:
             p = confined(root, c.args[0])
         except PathEscape:
             return Shot(False, f"path refused {c.args[0]}", c.amp, c.kind, "refuse")
         ok = p.exists()
-        return Shot(ok, "ok" if ok else f"missing {c.args[0]}", c.amp, c.kind, "pass" if ok else "fail")
+        return Shot(ok, "ok" if ok else f"missing {c.args[0]}", c.amp, c.kind, "pass" if ok else "fail", ok)
     if c.kind == "run":
         if not allow_run:
             return Shot(False, "run refused: need --allow-run", c.amp, c.kind, "refuse")
         r = subprocess.run(c.args[0], shell=True, cwd=root, capture_output=True)
         ok = r.returncode == 0
-        return Shot(ok, "ok" if ok else "run failed", c.amp, c.kind, "pass" if ok else "fail")
+        return Shot(ok, "ok" if ok else "run failed", c.amp, c.kind, "pass" if ok else "fail", r.returncode)
     if c.kind == "contains":
         try:
             p = confined(root, c.args[0])
@@ -165,8 +214,11 @@ def _run_one(
             return Shot(False, f"path refused {c.args[0]}", c.amp, c.kind, "refuse")
         if not p.is_file():
             return Shot(False, f"missing {c.args[0]}", c.amp, c.kind, "fail")
-        ok = c.args[1] in p.read_text(encoding="utf-8", errors="replace")
-        return Shot(ok, "ok" if ok else f"{c.args[0]} does not contain {c.args[1]!r}", c.amp, c.kind, "pass" if ok else "fail")
+        text = p.read_text(encoding="utf-8", errors="replace")
+        ok = c.args[1] in text
+        # The value is the file's text, not the verdict. A bool cannot flow:
+        # binding exists so a later check can use what this one READ.
+        return Shot(ok, "ok" if ok else f"{c.args[0]} does not contain {c.args[1]!r}", c.amp, c.kind, "pass" if ok else "fail", text)
     if c.kind == "eq":
         try:
             p = confined(root, c.args[0])
@@ -175,7 +227,7 @@ def _run_one(
         if not p.is_file():
             return Shot(False, f"missing {c.args[0]}", c.amp, c.kind, "fail")
         ok = p.read_text(encoding="utf-8", errors="replace") == c.args[1]
-        return Shot(ok, "ok" if ok else f"{c.args[0]} != {c.args[1]!r}", c.amp, c.kind, "pass" if ok else "fail")
+        return Shot(ok, "ok" if ok else f"{c.args[0]} != {c.args[1]!r}", c.amp, c.kind, "pass" if ok else "fail", ok)
     if c.kind == "use":
         try:
             path = confined(root, c.args[0])
@@ -200,7 +252,9 @@ def _run_one(
         )
         if out.refusals:
             return Shot(False, f"use {c.args[0]} refused", c.amp, c.kind, "refuse")
-        return Shot(out.ok, "ok" if out.ok else f"use {c.args[0]} contradicted", c.amp, c.kind, "pass" if out.ok else "fail")
+        # v1: the child exports its verdict only. Child bindings stay local —
+        # general export is a separate decision, deliberately not front-loaded.
+        return Shot(out.ok, "ok" if out.ok else f"use {c.args[0]} contradicted", c.amp, c.kind, "pass" if out.ok else "fail", out.ok)
     return Shot(False, f"unknown {c.kind}", c.amp, c.kind, "fail")
 
 

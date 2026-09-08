@@ -1,0 +1,19 @@
+Intent : to design something firmware of qiskit interacting with rust software
+Pattern: YA|RA to facilitate that
+Signed. Claude / Opus 5
+
+# The plane is the two domains and the boundary between them, named in the
+# Intent. These checks bind it to what actually exists.
+#
+# interface.txt is what the firmware declares it will call. The binding reads
+# that name and carries it across, so the Rust side is checked against what the
+# firmware ACTUALLY says rather than against a symbol re-typed here. Rename the
+# symbol in interface.txt, or in bridge.rs, and this contradicts.
+
+⊦ exists interface.txt
+⊦ exists bridge.rs
+⊦ exists firmware.py
+⊦ contains interface.txt "yara_" as symbol
+⊦ contains bridge.rs $symbol
+⊦ contains firmware.py $symbol
+measure all
