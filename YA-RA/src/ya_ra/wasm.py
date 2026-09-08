@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 from .ast import Door
-from .emit import UnsupportedSemantic, _c_str, _require
 
 
 def emit_wasm(door: Door) -> str:
+    from .emit import _c_str, _require
+
     _require("wasm", door)
 
     def wc(s: str) -> int:
