@@ -41,6 +41,7 @@ def main(argv: list[str] | None = None) -> int:
     add_src(pm)
     pm.add_argument("--allow-run", action="store_true", help="permit run checks")
     pm.add_argument("--require-provenance", action="store_true", help="refuse unsigned expressions")
+    pm.add_argument("--action", action="store_true", help="treat the input as the unsigned integral; the cut refuses")
 
     pp = sub.add_parser("parse")
     add_src(pp)
@@ -64,7 +65,7 @@ def main(argv: list[str] | None = None) -> int:
         print("Intent :", door.intent)
         print("Pattern:", door.pattern)
         print("envelope", door.envelope.kind, door.envelope.actor or "-", "/", door.envelope.timestamp or "-")
-        print("00" if door.zero else "not-zero", "glimpse" if door.glimpse else "depth", "measure", door.measure)
+        print("00" if door.zero else "not-zero", "glimpse" if door.glimpse else "depth", "cut" if door.cut else "no-cut", "measure", door.measure)
         for c in door.checks:
             print(f"⊦ {c.kind} {' '.join(c.args)} amp {c.amp}")
         return 0
@@ -82,11 +83,12 @@ def main(argv: list[str] | None = None) -> int:
             root=root,
             allow_run=args.allow_run,
             require_provenance=args.require_provenance,
+            action_is_door=args.action,
         )
         if out.ok:
             print(f"YA|RA {door.rv} measured ok")
             print(f"born {out.born:.6f} (observational)")
-            print(f"Z {out.z} (observational)")
+            print(f"Z {out.z}")
             return 0
         for err in out.refusals:
             print("refused:", err, file=sys.stderr)

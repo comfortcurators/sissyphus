@@ -8,6 +8,7 @@ from .ast import Check, Door
 from .parse import ParseError, parse
 from .paths import PathEscape, confined
 from .quantum import psi_and_born
+from .toe import Cut, project as toe_project
 
 
 class RunRefused(Exception):
@@ -33,6 +34,7 @@ class Outcome:
     errors: list[str] = field(default_factory=list)
     refusals: list[str] = field(default_factory=list)
     missing_provenance: bool = False
+    cut: Cut | None = None
 
 
 def _words(s: str) -> int:
@@ -46,6 +48,7 @@ def measure(
     *,
     allow_run: bool = False,
     require_provenance: bool = False,
+    action_is_door: bool = False,
 ) -> Outcome:
     root = Path(root or ".").resolve()
     shots: list[Shot] = []
@@ -78,7 +81,10 @@ def measure(
         errors.extend(s.detail for s in shots if s.status == "fail")
 
     psi, born_p = psi_and_born([s.amp for s in shots], [s.status == "pass" for s in shots])
-    z = sum((s.amp if s.status == "pass" else 0j) for s in shots)
+    cut = toe_project(door, [s.amp for s in shots], [s.status == "pass" for s in shots], action_is_door=action_is_door)
+    z = cut.z
+    if cut.refused:
+        refusals.append(cut.reason)
     ok = checks_ok and not errors and not refusals
     return Outcome(
         ok=ok,
@@ -89,6 +95,7 @@ def measure(
         errors=errors,
         refusals=refusals,
         missing_provenance=missing_prov,
+        cut=cut,
     )
 
 

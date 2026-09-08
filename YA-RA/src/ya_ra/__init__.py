@@ -7,6 +7,7 @@ from .paths import PathEscape, confined
 from .quantum import Hilbert
 from .root import from_root
 from .semantics import CANONICAL, CONFORMANCE
+from .toe import Cut, project as toe_project
 from .types import typecheck
 from .weave import weave
 
@@ -31,4 +32,6 @@ __all__ = [
     "CONFORMANCE",
     "PathEscape",
     "confined",
+    "Cut",
+    "toe_project",
 ]
