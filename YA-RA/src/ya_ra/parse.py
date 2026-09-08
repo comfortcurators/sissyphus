@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import re
 
-from .ast import CHECK_KINDS, Check, Door, RV
+from .ast import CHECK_KINDS, Check, Door, Envelope, RV
 from .types import TypeError_, typecheck
 
 
@@ -35,30 +35,43 @@ def parse(src: str, source: str = "") -> Door:
         rv = "rv" + _RV.match(lines[i].strip()).group(1)
         i += 1
         skip()
-    if i + 2 >= len(lines):
-        raise ParseError("YA|RA door needs Intent, Pattern, Signed")
+    if i + 1 >= len(lines):
+        raise ParseError("YA|RA is Intent | Pattern")
 
     im = _INTENT.match(lines[i].strip())
     pm = _PATTERN.match(lines[i + 1].strip())
-    sm = _SIGNED.match(lines[i + 2].strip())
-    if not (im and pm and sm):
-        raise ParseError("YA|RA door spelling is Intent / Pattern / Signed.")
+    if not (im and pm):
+        raise ParseError("YA|RA spelling is Intent | Pattern")
+
+    env = Envelope()
+    body_from = i + 2
+    if body_from < len(lines):
+        sm = _SIGNED.match(lines[body_from].strip())
+        if sm:
+            env = Envelope(
+                kind="declared",
+                actor=sm.group(1).strip(),
+                timestamp=sm.group(2).strip(),
+                note="declared Signed line is provenance, not a language constituent",
+            )
+            body_from = body_from + 1
 
     door = Door(
         intent=im.group(1).strip(),
         pattern=pm.group(1).strip(),
-        signer=sm.group(1).strip(),
-        timestamp=sm.group(2).strip(),
+        envelope=env,
         rv=rv,
         source=source,
     )
-    if not door.intent or not door.pattern or not door.signer:
+    if not door.intent or not door.pattern:
         raise ParseError("empty field")
 
-    for n, raw in enumerate(lines[i + 3 :], start=i + 4):
+    for n, raw in enumerate(lines[body_from:], start=body_from + 1):
         s = raw.strip()
         if not s or s.startswith("#"):
             continue
+        if _SIGNED.match(s):
+            raise ParseError(f"line {n}: Signed belongs in the envelope, once, after Pattern")
         if s in {"00", "0"}:
             door.zero = True
             continue
