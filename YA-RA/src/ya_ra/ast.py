@@ -5,8 +5,8 @@ from dataclasses import dataclass, field
 
 RV = "rv0.2.0"
 
-# kinds the type system admits. unknown kinds are a type error.
 CHECK_KINDS = ("words", "exists", "run", "contains", "eq", "use")
+ENVELOPE_KINDS = ("none", "declared", "git-author", "mtime")
 
 
 @dataclass
@@ -17,11 +17,24 @@ class Check:
 
 
 @dataclass
+class Envelope:
+    """Organisation provenance around an expression. Not part of YA|RA."""
+
+    kind: str = "none"
+    actor: str = ""
+    timestamp: str = ""
+    note: str = ""
+
+    @property
+    def present(self) -> bool:
+        return self.kind != "none" and bool(self.actor)
+
+
+@dataclass
 class Door:
     intent: str
     pattern: str
-    signer: str
-    timestamp: str
+    envelope: Envelope = field(default_factory=Envelope)
     rv: str = RV
     measure: str = "all"
     zero: bool = False
@@ -33,3 +46,11 @@ class Door:
     @property
     def name(self) -> str:
         return "YA|RA"
+
+    @property
+    def signer(self) -> str:
+        return self.envelope.actor
+
+    @property
+    def timestamp(self) -> str:
+        return self.envelope.timestamp

@@ -1,8 +1,8 @@
-"""YA|RA type system. A door's type is Signed. Checks have kinds."""
+"""YA|RA type system. A door's type is Intent | Pattern. Provenance is envelope."""
 
 from __future__ import annotations
 
-from .ast import CHECK_KINDS, Check, Door
+from .ast import CHECK_KINDS, ENVELOPE_KINDS, Check, Door
 
 
 class TypeError_(Exception):
@@ -14,12 +14,12 @@ def typecheck(door: Door) -> Door:
         raise TypeError_("Intent is empty")
     if not door.pattern:
         raise TypeError_("Pattern is empty")
-    if not door.signer:
-        raise TypeError_("Unsigned. A door's type is Signed.")
     if door.measure not in {"all", "any"}:
         raise TypeError_("measure is all|any")
     if not door.rv.startswith("rv"):
         raise TypeError_("version token is always rv")
+    if door.envelope.kind not in ENVELOPE_KINDS:
+        raise TypeError_("envelope kind is none|declared|git-author|mtime")
     for i, c in enumerate(door.checks):
         _check_type(c, i)
     return door
