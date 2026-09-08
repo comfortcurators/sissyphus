@@ -10,7 +10,10 @@ from .root import from_root
 from .semantics import CANONICAL, CONFORMANCE
 from .toe import Cut, project as toe_project
 from .types import typecheck
+from .wasm import emit_wasm
 from .weave import weave
+
+TARGETS["wasm"] = emit_wasm
 
 __all__ = [
     "RV",
@@ -36,4 +39,5 @@ __all__ = [
     "confined",
     "Cut",
     "toe_project",
+    "emit_wasm",
 ]
