@@ -59,6 +59,9 @@ class TestYA_RA(unittest.TestCase):
     def test_use_is_recursive(self):
         d = parse("Intent : parent\nPattern: uses a child\nuse YA-RA/examples/child.YA-RA\n")
         self.assertTrue(measure(d, root=ROOT).ok)
+        from ya_ra.program import from_program
+        curator = from_program(ROOT / "YA-RA" / "programs" / "curator")
+        self.assertTrue(measure(curator, root=ROOT / "YA-RA" / "programs" / "curator").ok)
 
     def test_backends_do_not_weaken(self):
         d = parse("Intent : parent\nPattern: uses a child\nuse YA-RA/examples/child.YA-RA\n")
@@ -104,7 +107,7 @@ class TestYA_RA(unittest.TestCase):
         self.assertTrue(out.cut.refused)
         r = _run(["measure", "--root", str(ROOT), "--action"])
         self.assertNotEqual(r.returncode, 0)
-        self.assertEqual(RV, "rv0.2.0")
+        self.assertEqual(RV, "rv0.3.0")
 
 
 if __name__ == "__main__":

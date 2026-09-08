@@ -10,6 +10,7 @@ from .emit import TARGETS, UnsupportedSemantic, emit
 from .llm import hop
 from .measure import measure
 from .parse import ParseError, parse
+from .program import from_program
 from .root import RootError, from_root
 from .weave import weave
 
@@ -18,13 +19,15 @@ def _load(file: str | None, root: Path) -> object:
     if file:
         p = Path(file)
         if p.is_dir():
+            if (p / "main.YA-RA").is_file():
+                return from_program(p)
             return from_root(p)
         return parse(p.read_text(encoding="utf-8"), source=str(p))
     return from_root(root)
 
 
 def main(argv: list[str] | None = None) -> int:
-    p = argparse.ArgumentParser(prog="YA|RA", description="YA|RA language rv0.2.0")
+    p = argparse.ArgumentParser(prog="YA|RA", description="YA|RA language rv0.3.0")
     p.add_argument("--rv", action="version", version=RV)
     sub = p.add_subparsers(dest="cmd", required=True)
 
