@@ -78,6 +78,9 @@ def parse(src: str, source: str = "") -> Door:
         if s.lower() == "glimpse":
             door.glimpse = True
             continue
+        if s.lower() == "cut":
+            door.cut = True
+            continue
         if _RV.match(s):
             door.rv = "rv" + _RV.match(s).group(1)
             continue
