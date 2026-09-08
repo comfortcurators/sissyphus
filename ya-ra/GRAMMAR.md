@@ -1,11 +1,11 @@
-# ya-ra grammar (EBNF)
+# ya-ra grammar — rv0.1.0
 
-Version token is always `rv` + integer. This file is **rv1**.
+Version token is always `rv` plus dotted integers. Never bare `YARA`. Never unprefixed semver.
 
 ```
-file        = [ rv NL ] door { check | rv } EOF ;
+file        = [ rv NL ] door { stmt } EOF ;
 
-rv          = 'rv' integer ;
+rv          = 'rv' integer { '.' integer } ;
 
 door        = intent NL pattern NL signed [ NL ] ;
 
@@ -13,11 +13,11 @@ intent      = 'Intent' [ ' ' ] ':' SP text ;
 pattern     = 'Pattern' [ ' ' ] ':' SP text ;
 signed      = 'Signed' '.' SP name SP '/' SP timestamp ;
 
-text        = { char - NL } ;
-name        = { char - '/' - NL } ;
-timestamp   = { char - NL } ;
+stmt        = measure | check | rv ;
 
-check       = ( '⊦' | 'check' ) SP check_body NL ;
+measure     = 'measure' SP ('all' | 'any') ;
+check       = ( '⊦' | 'check' ) SP check_body [ SP amp ] NL ;
+amp         = 'amp' SP number ;
 check_body  = exists | words | run | contains | eq ;
 
 exists      = 'exists' SP path ;
@@ -25,14 +25,6 @@ words       = 'words' SP ('intent' | 'pattern') SP '<=' SP integer ;
 run         = 'run' SP command ;
 contains    = 'contains' SP path SP string ;
 eq          = 'eq' SP path SP string ;
-
-SP          = ' ' ;
-NL          = '\n' ;
 ```
 
-Semantics
-- Intent: hypothesis written before the outcome is known.
-- Pattern: human-readable falsification route.
-- Signed: principal bound to that pair.
-- rv: the only version token. Never semver. Never bare YARA.
-- ⊦ / check: machine-executable falsifiers. Any failure contradicts the Intent.
+Default measure is `all`.

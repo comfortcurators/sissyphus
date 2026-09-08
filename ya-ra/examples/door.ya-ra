@@ -1,10 +1,12 @@
-# YA|RA door — canonical prose spelling is YA|RA; path spelling is ya-ra
-rv1
+# YA|RA — path spelling ya-ra. Never bare YARA.
+rv0.1.0
 
 Intent : Language for all.
 Pattern: Language aforementioned.
 Signed. Yash Rajvansh / 2026-09-06 12:40 IST
 
-⊦ words intent <= 17
-⊦ words pattern <= 17
-⊦ exists GRAMMAR.md
+measure all
+⊦ words intent <= 17 amp 1
+⊦ words pattern <= 17 amp 1
+⊦ exists GRAMMAR.md amp 1
+⊦ exists SEMANTICS.md amp 1

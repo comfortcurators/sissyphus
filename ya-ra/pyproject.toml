@@ -1,7 +1,7 @@
 [project]
 name = "ya-ra"
-version = "1"
-description = "Executable YA|RA — Intent | Pattern | Signed. Public version token: rv1."
+version = "0.1.0"
+description = "YA|RA rv0.1.0 — Intent | Pattern | Signed. Version token always rv."
 requires-python = ">=3.10"
 
 [tool.setuptools.packages.find]

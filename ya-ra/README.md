@@ -1,26 +1,22 @@
 # ya-ra
 
-Executable form of **YA|RA**. Version is always `rv`. This tree is **rv1**.
+**YA|RA** as an executable cut. Version token is always `rv`. This tree is **rv0.1.0**.
+
+The Standard Model + GR path integral is one unattributed total. YA|RA is not a larger L. It is Intent | Pattern | Signed — a measurement a named observer can lose.
 
 ```
-rv1
+rv0.1.0
 Intent : what may become true
 Pattern: how reality can contradict it
 Signed. who stood behind the attempt
 
-⊦ exists PATH
-⊦ words intent|pattern <= N
-⊦ run COMMAND
-⊦ contains PATH STRING
-⊦ eq PATH STRING
+measure all
+⊦ exists PATH amp 1
 ```
 
 ```bash
 python3 -m ya_ra --rv
 python3 -m ya_ra check examples/door.ya-ra --root .
-python3 -m ya_ra emit examples/door.ya-ra --lang python -o emit/door_test.py
-python3 -m ya_ra emit examples/door.ya-ra --lang rust   -o emit/door.rs
-python3 -m ya_ra emit examples/door.ya-ra --lang c      -o emit/door.c
 ```
 
-Never write the name as bare `YARA`.
+See `SEMANTICS.md`. Never write the name as bare `YARA`.
