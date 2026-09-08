@@ -6,7 +6,7 @@ import sys
 from pathlib import Path
 
 from .ast import RV
-from .emit import TARGETS, emit
+from .emit import TARGETS, UnsupportedSemantic, emit
 from .llm import hop
 from .measure import measure
 from .parse import ParseError, parse
@@ -29,7 +29,7 @@ def main(argv: list[str] | None = None) -> int:
     sub = p.add_subparsers(dest="cmd", required=True)
 
     def add_src(sp: argparse.ArgumentParser) -> None:
-        sp.add_argument("file", nargs="?", help="door file, or omit to assemble from --root")
+        sp.add_argument("file", nargs="?", help="expression file, or omit to assemble from --root")
         sp.add_argument("--root", default=".", help="measure root; also the five-file tree")
 
     pc = sub.add_parser("compile")
@@ -39,6 +39,8 @@ def main(argv: list[str] | None = None) -> int:
 
     pm = sub.add_parser("measure")
     add_src(pm)
+    pm.add_argument("--allow-run", action="store_true", help="permit run checks")
+    pm.add_argument("--require-provenance", action="store_true", help="refuse unsigned expressions")
 
     pp = sub.add_parser("parse")
     add_src(pp)
@@ -61,7 +63,7 @@ def main(argv: list[str] | None = None) -> int:
         print("YA|RA", door.rv)
         print("Intent :", door.intent)
         print("Pattern:", door.pattern)
-        print("Signed.", door.signer, "/", door.timestamp)
+        print("envelope", door.envelope.kind, door.envelope.actor or "-", "/", door.envelope.timestamp or "-")
         print("00" if door.zero else "not-zero", "glimpse" if door.glimpse else "depth", "measure", door.measure)
         for c in door.checks:
             print(f"⊦ {c.kind} {' '.join(c.args)} amp {c.amp}")
@@ -75,12 +77,19 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     if args.cmd == "measure":
-        out = measure(door, root=root)
+        out = measure(
+            door,
+            root=root,
+            allow_run=args.allow_run,
+            require_provenance=args.require_provenance,
+        )
         if out.ok:
             print(f"YA|RA {door.rv} measured ok")
-            print(f"born {out.born:.6f}")
-            print(f"Z {out.z}")
+            print(f"born {out.born:.6f} (observational)")
+            print(f"Z {out.z} (observational)")
             return 0
+        for err in out.refusals:
+            print("refused:", err, file=sys.stderr)
         for err in out.errors:
             print("contradicted:", err, file=sys.stderr)
         return 1
@@ -90,7 +99,11 @@ def main(argv: list[str] | None = None) -> int:
         sys.stdout.write(result.wire())
         return 0 if result.error is None else 1
 
-    code = emit(door, args.to)
+    try:
+        code = emit(door, args.to)
+    except UnsupportedSemantic as e:
+        print(f"YA|RA unsupported-semantic: {e}", file=sys.stderr)
+        return 3
     if args.out:
         Path(args.out).write_text(code, encoding="utf-8")
     else:

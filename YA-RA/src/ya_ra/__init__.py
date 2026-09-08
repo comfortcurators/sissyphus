@@ -1,10 +1,12 @@
-from .ast import RV, Check, Door
-from .emit import TARGETS, emit
+from .ast import RV, Check, Door, Envelope
+from .emit import TARGETS, UnsupportedSemantic, emit
 from .llm import hop
 from .measure import Outcome, measure
 from .parse import ParseError, parse
+from .paths import PathEscape, confined
 from .quantum import Hilbert
 from .root import from_root
+from .semantics import CANONICAL, CONFORMANCE
 from .types import typecheck
 from .weave import weave
 
@@ -12,6 +14,7 @@ __all__ = [
     "RV",
     "Check",
     "Door",
+    "Envelope",
     "ParseError",
     "parse",
     "typecheck",
@@ -19,8 +22,13 @@ __all__ = [
     "Outcome",
     "weave",
     "emit",
+    "UnsupportedSemantic",
     "TARGETS",
     "from_root",
     "hop",
     "Hilbert",
+    "CANONICAL",
+    "CONFORMANCE",
+    "PathEscape",
+    "confined",
 ]
