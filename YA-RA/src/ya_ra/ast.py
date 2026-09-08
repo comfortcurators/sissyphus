@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 
-RV = "rv0.2.0"
+RV = "rv0.3.0"
 
 CHECK_KINDS = ("words", "exists", "run", "contains", "eq", "use")
 ENVELOPE_KINDS = ("none", "declared", "git-author", "mtime")
