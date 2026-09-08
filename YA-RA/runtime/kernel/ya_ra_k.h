@@ -46,13 +46,13 @@ static inline int yara_k_words(const char *s) {
 }
 
 static inline int yara_k_measure(const struct yara_k_door *d) {
-  if (!d || !d->intent || !d->pattern || !d->signer) return YARA_K_FAIL;
-  if (!d->signer[0]) return YARA_K_FAIL;
+  if (!d || !d->intent || !d->pattern) return YARA_K_FAIL;
   if (yara_k_words(d->intent) > 17) return YARA_K_FAIL;
   if (yara_k_words(d->pattern) > 17) return YARA_K_FAIL;
   (void)d->measure_any;
   (void)d->timestamp;
   (void)d->rv;
+  (void)d->signer;
   return YARA_K_OK;
 }
 

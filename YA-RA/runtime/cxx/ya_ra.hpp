@@ -73,7 +73,7 @@ struct Door {
   }
 
   bool measure() const {
-    if (intent.empty() || pattern.empty() || signer.empty()) return false;
+    if (intent.empty() || pattern.empty()) return false;
     if (words(intent) > 17 || words(pattern) > 17) return false;
     if (checks.empty()) return true;
     int ok_n = 0;
