@@ -130,7 +130,10 @@ class TestWriteCapability(unittest.TestCase):
         actually `use`s sibling doors, so a bare cura door never reaches the
         write at all and would prove nothing."""
         d = Path(tempfile.mkdtemp())
-        shutil.copytree(Path("programs/cura"), d / "cura")
+        # anchored to this file, never to cwd: CI runs pytest from the repo
+        # root, so a relative "programs/cura" resolves only when the suite
+        # happens to be invoked from inside YA-RA/.
+        shutil.copytree(ROOT / "YA-RA" / "programs" / "cura", d / "cura")
         root = d / "cura"
         (root / "aforementioned.YA-RA").unlink(missing_ok=True)
         return root
@@ -166,12 +169,12 @@ class TestToeAgreesAcrossBackends(unittest.TestCase):
         self.assertTrue(cut.missing_provenance)
 
     def test_c_runtime_no_longer_refuses_on_an_empty_signer(self):
-        src = Path("runtime/toe/toe.h").read_text(encoding="utf-8")
+        src = (ROOT / "YA-RA" / "runtime" / "toe" / "toe.h").read_text(encoding="utf-8")
         self.assertNotIn("|| !c->signer || !c->signer[0]", src)
         self.assertIn("missing_provenance", src)
 
     def test_c_runtime_still_refuses_the_unsigned_action(self):
-        src = Path("runtime/toe/toe.h").read_text(encoding="utf-8")
+        src = (ROOT / "YA-RA" / "runtime" / "toe" / "toe.h").read_text(encoding="utf-8")
         self.assertIn("c->action_is_door", src)
 
 
