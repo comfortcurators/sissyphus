@@ -1,0 +1,16 @@
+[project]
+name = "ya-ra"
+version = "0.2.0"
+description = "YA|RA rv0.2.0 — Intent | Pattern | Signed. Version token always rv."
+readme = "README.md"
+requires-python = ">=3.10"
+
+[project.scripts]
+ya-ra = "ya_ra.__main__:main"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]

@@ -2,35 +2,13 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-import json
+from pathlib import Path
+import sys
 
+_SRC = Path(__file__).resolve().parents[2] / "src"
+if str(_SRC) not in sys.path:
+    sys.path.insert(0, str(_SRC))
 
-@dataclass
-class Frame:
-    rv: str
-    phase: str
-    intent: str
-    pattern: str
-    signed: str
+from ya_ra.llm import Frame, Hop, frames_for, hop
 
-    def wire(self) -> str:
-        return json.dumps(
-            {
-                "language": "YA|RA",
-                "rv": self.rv,
-                "phase": self.phase,
-                "transporter": {
-                    "intent": self.intent,
-                    "pattern": self.pattern,
-                    "signed": self.signed,
-                },
-            },
-            ensure_ascii=False,
-        )
-
-    @staticmethod
-    def from_wire(s: str) -> "Frame":
-        o = json.loads(s)
-        t = o["transporter"]
-        return Frame(o["rv"], o["phase"], t["intent"], t["pattern"], t["signed"])
+__all__ = ["Frame", "Hop", "frames_for", "hop"]

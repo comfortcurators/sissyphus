@@ -1,0 +1,26 @@
+name: YA-RA
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  measure:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: leftover tree must not exist
+        run: test ! -d ya-ra
+      - name: five files still at root
+        run: test -f Intent && test -f Pattern && test -f Glimpse && test -f README.md && test -f IMG_3790.jpeg
+      - name: tests
+        run: PYTHONPATH=YA-RA/src python3 -m unittest discover -s YA-RA/tests -v
+      - name: install
+        run: pip install -e YA-RA
+      - name: measure the five files
+        run: ya-ra measure --root .
+      - name: llm envelope is JSON
+        run: ya-ra compile --root . --to llm | python3 -c "import sys, json; json.load(sys.stdin)"

@@ -1,16 +1,14 @@
-"""YA|RA quantum measure. Modes of Pattern are basis states."""
+"""YA|RA Hilbert space. ℂ^{2^n}. Born rule is |⟨x|ψ⟩|²."""
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from pathlib import Path
+import sys
 
+_SRC = Path(__file__).resolve().parents[2] / "src"
+if str(_SRC) not in sys.path:
+    sys.path.insert(0, str(_SRC))
 
-@dataclass
-class Psi:
-    amps: list[complex]
+from ya_ra.quantum import Hilbert, born_prob, collapse, product_state, psi_and_born, sample
 
-    def norm2(self) -> float:
-        return sum((a.conjugate() * a).real for a in self.amps)
-
-    def collapse(self, bits: list[bool]) -> "Psi":
-        return Psi([a if keep else 0j for a, keep in zip(self.amps, bits)])
+__all__ = ["Hilbert", "born_prob", "collapse", "product_state", "psi_and_born", "sample"]

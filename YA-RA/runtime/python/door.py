@@ -1,24 +1,15 @@
-"""YA|RA Python runtime."""
+"""YA|RA Python runtime. Hosted measure of a door."""
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from pathlib import Path
+import sys
 
+_SRC = Path(__file__).resolve().parents[2] / "src"
+if str(_SRC) not in sys.path:
+    sys.path.insert(0, str(_SRC))
 
-@dataclass
-class Door:
-    intent: str
-    pattern: str
-    signer: str
-    timestamp: str
-    rv: str = "rv0.1.0"
-    measure: str = "all"
-    zero: bool = False
-    glimpse: bool = False
+from ya_ra.ast import Door
+from ya_ra.measure import measure
 
-    def ok(self) -> bool:
-        if not (self.intent and self.pattern and self.signer):
-            return False
-        if len(self.intent.split()) > 17 or len(self.pattern.split()) > 17:
-            return False
-        return True
+__all__ = ["Door", "measure"]

@@ -1,31 +1,13 @@
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass, field
+
+from .ast import CHECK_KINDS, Check, Door, RV
+from .types import TypeError_, typecheck
 
 
 class ParseError(Exception):
     pass
-
-
-@dataclass
-class Check:
-    kind: str
-    args: list[str]
-    raw: str
-    amp: float | None = None
-
-
-@dataclass
-class Door:
-    intent: str
-    pattern: str
-    signer: str
-    timestamp: str
-    rv: str = "rv0.1.0"
-    measure: str = "all"
-    checks: list[Check] = field(default_factory=list)
-    source: str = ""
 
 
 _INTENT = re.compile(r"^Intent\s*:\s*(.*)$")
@@ -34,32 +16,33 @@ _SIGNED = re.compile(r"^Signed\.\s*(.+?)\s*/\s*(.+)$")
 _CHECK = re.compile(r"^(?:⊦|check)\s+(\S+)(?:\s+(.*))?$")
 _RV = re.compile(r"^rv\s*(\d+(?:\.\d+){0,2})$", re.I)
 _MEASURE = re.compile(r"^measure\s+(all|any)$", re.I)
-_AMP = re.compile(r"^(.*?)\s+amp\s+([+-]?(?:\d+(?:\.\d*)?|\.\d+))\s*$")
+_USE = re.compile(r"^use\s+(\S+)$", re.I)
+_AMP = re.compile(r"^(.*?)\s+amp\s+(\S+)\s*$")
 
 
 def parse(src: str, source: str = "") -> Door:
     lines = src.replace("\r\n", "\n").replace("\r", "\n").split("\n")
     i = 0
-    while i < len(lines) and (not lines[i].strip() or lines[i].lstrip().startswith("#")):
-        i += 1
-    rv = "rv0.1.0"
+
+    def skip() -> None:
+        nonlocal i
+        while i < len(lines) and (not lines[i].strip() or lines[i].lstrip().startswith("#")):
+            i += 1
+
+    skip()
+    rv = RV
     if i < len(lines) and _RV.match(lines[i].strip()):
         rv = "rv" + _RV.match(lines[i].strip()).group(1)
         i += 1
-        while i < len(lines) and (not lines[i].strip() or lines[i].lstrip().startswith("#")):
-            i += 1
+        skip()
     if i + 2 >= len(lines):
-        raise ParseError("door needs Intent, Pattern, Signed")
+        raise ParseError("YA|RA door needs Intent, Pattern, Signed")
 
     im = _INTENT.match(lines[i].strip())
     pm = _PATTERN.match(lines[i + 1].strip())
     sm = _SIGNED.match(lines[i + 2].strip())
-    if not im:
-        raise ParseError(f"line {i+1}: expected Intent : ...")
-    if not pm:
-        raise ParseError(f"line {i+2}: expected Pattern: ...")
-    if not sm:
-        raise ParseError(f"line {i+3}: expected Signed. name / timestamp")
+    if not (im and pm and sm):
+        raise ParseError("YA|RA door spelling is Intent / Pattern / Signed.")
 
     door = Door(
         intent=im.group(1).strip(),
@@ -69,61 +52,70 @@ def parse(src: str, source: str = "") -> Door:
         rv=rv,
         source=source,
     )
-    if not door.intent:
-        raise ParseError("empty Intent")
-    if not door.pattern:
-        raise ParseError("empty Pattern")
-    if not door.signer:
-        raise ParseError("empty signer")
+    if not door.intent or not door.pattern or not door.signer:
+        raise ParseError("empty field")
 
     for n, raw in enumerate(lines[i + 3 :], start=i + 4):
         s = raw.strip()
         if not s or s.startswith("#"):
             continue
-        rm = _RV.match(s)
-        if rm:
-            door.rv = "rv" + rm.group(1)
+        if s in {"00", "0"}:
+            door.zero = True
+            continue
+        if s.lower() == "glimpse":
+            door.glimpse = True
+            continue
+        if _RV.match(s):
+            door.rv = "rv" + _RV.match(s).group(1)
             continue
         mm = _MEASURE.match(s)
         if mm:
             door.measure = mm.group(1).lower()
             continue
+        um = _USE.match(s)
+        if um:
+            door.checks.append(Check(kind="use", args=[um.group(1)]))
+            continue
         cm = _CHECK.match(s)
         if not cm:
-            raise ParseError(f"line {n}: expected ⊦/check/measure, got {s!r}")
-        kind = cm.group(1)
-        rest = (cm.group(2) or "").strip()
-        amp = None
+            raise ParseError(f"line {n}: {s!r}")
+        kind, rest = cm.group(1), (cm.group(2) or "").strip()
+        amp = 1 + 0j
         am = _AMP.match(rest)
         if am:
-            rest, amp = am.group(1).strip(), float(am.group(2))
-        if kind not in {"exists", "words", "run", "contains", "eq"}:
+            rest = am.group(1).strip()
+            try:
+                amp = complex(am.group(2).replace("i", "j"))
+            except ValueError as e:
+                raise ParseError(f"line {n}: bad amp") from e
+        if kind not in CHECK_KINDS:
             raise ParseError(f"line {n}: unknown check {kind!r}")
         args = _split_args(kind, rest, n)
-        door.checks.append(Check(kind=kind, args=args, raw=s, amp=amp))
+        door.checks.append(Check(kind=kind, args=args, amp=amp))
+
+    try:
+        typecheck(door)
+    except TypeError_ as e:
+        raise ParseError(str(e)) from e
     return door
 
 
 def _split_args(kind: str, rest: str, n: int) -> list[str]:
-    if kind == "exists":
-        if not rest:
-            raise ParseError(f"line {n}: exists needs a path")
-        return [rest]
     if kind == "words":
         m = re.match(r"^(intent|pattern)\s*<=\s*(\d+)$", rest)
         if not m:
-            raise ParseError(f"line {n}: words FIELD <= N")
+            raise ParseError("words FIELD <= N")
         return [m.group(1), m.group(2)]
-    if kind == "run":
+    if kind in {"exists", "run", "use"}:
         if not rest:
-            raise ParseError(f"line {n}: run needs a command")
+            raise ParseError(f"line {n}: {kind} needs an argument")
         return [rest]
     if kind in {"contains", "eq"}:
         m = re.match(r'^(\S+)\s+("(?:\\.|[^"])*"|\'(?:\\.|[^\'])*\'|\S+)$', rest)
         if not m:
             raise ParseError(f"line {n}: {kind} PATH STRING")
         return [m.group(1), _unquote(m.group(2))]
-    return [rest]
+    return [rest] if rest else []
 
 
 def _unquote(s: str) -> str:
