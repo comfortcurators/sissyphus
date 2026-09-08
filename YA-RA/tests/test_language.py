@@ -264,3 +264,40 @@ class TestBinding(unittest.TestCase):
         bound = [c.bind for c in door.checks if c.bind]
         self.assertEqual(bound, ["symbol"])
 
+    def test_a_failed_check_never_binds_and_refusal_vetoes_any(self):
+        """External review (Kimi, DeepSeek) found this live in the flagship
+        program: a failed check's incidental payload (None for a missing file,
+        the string "False" for a failed eq, the whole file's text for a failed
+        contains) still bound, so a wrong answer read as data. Reproduced on
+        the founder's own triple before the fix: breaking interface.txt's
+        marker still bound `symbol` to the ENTIRE file, and the next check
+        searched bridge.rs for that whole text.
+
+        The same review named the rule that makes an any-door with a bound
+        failure safe even without this fix: one refusal vetoes every pass.
+        That veto is real (semantics.py's CANONICAL says so) but was not
+        written down anywhere a reader would find it. Both are one property:
+        a check that did not answer "yes" contributes nothing usable to what
+        comes after it, whichever way it declined to.
+        """
+        broken = Path(tempfile.mkdtemp())
+        shutil.copytree(ROOT / "YA-RA" / "programs" / "qiskit-rust", broken / "p")
+        (broken / "p" / "interface.txt").write_text("no marker here\n", encoding="utf-8")
+        door = parse((broken / "p" / "main.YA-RA").read_text(encoding="utf-8"), source=str(broken / "p"))
+        out = measure(door, root=broken / "p")
+        self.assertFalse(out.ok)
+        self.assertTrue(any("unbound $symbol" in s.detail for s in out.shots))
+
+        # any: a passing check cannot rescue a door that also refused
+        root = self._root()
+        (root / "any.YA-RA").write_text(
+            "Intent : one refusal vetoes every pass under any\n"
+            "Pattern: an unbound name refuses even beside a check that passed\n"
+            "\u22a6 exists manifest.txt\n"
+            "\u22a6 exists $nope\n"
+            "measure any\n",
+            encoding="utf-8",
+        )
+        out2 = measure(parse((root / "any.YA-RA").read_text(encoding="utf-8")), root=root)
+        self.assertFalse(out2.ok)
+

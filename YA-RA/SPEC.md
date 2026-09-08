@@ -375,25 +375,56 @@ Restored: 16 pass, CI green on `main`.
 
 Ranked by how much I think they matter. Each states what would settle it.
 
-**1. Ordered evaluation is a semantic change nothing else in the language
-acknowledges.** `measure any` folds a sequence whose members may now depend on
-each other. If check 3 binds and check 5 uses it, `any` can pass while the
-binding never happened. Is that coherent? I did not resolve it; I preserved
-the existing fold and let bindings thread through underneath. *Settled by:
-deciding whether `any` over dependent checks is meaningful, and if not, whether
-binding should be refused under `measure any`.*
+**1. RESOLVED, by external review — a real bug this open problem was
+pointing at but had not found.** Two independent reviews (Kimi, DeepSeek) read
+the fold in `measure.py` and showed the scenario in the previous paragraph
+cannot happen, for a reason this document never stated: **one refusal vetoes
+every pass under `any`** — `ok = checks_ok and not errors and not refusals`,
+unconditionally, so a door with an unbound `$name` cannot pass by virtue of an
+unrelated check succeeding. That rule already lived in `semantics.py`'s
+`CANONICAL` (*"one passing check keeps the Intent unless a refusal occurred"*)
+and had no other visible surface.
 
-**2. The whitespace-strip on substitution is a judgement call.** Stripping
-makes `contains ... as p` → `exists $p` work at all; not stripping makes it
-faithful and useless. A third option exists and I did not take it: a separate
-value for "the first line of what was read". *Settled by: a rule that is
-defensible for multi-line files, not just for one-line manifests.*
+**But the review found what actually made the scenario reachable, and it was
+worse than the one this document was worried about.** `env[c.bind] = shot.value`
+ran whenever a check's status was not `"refuse"` — which includes `"fail"`. So
+a *failed* check still bound its value: `None` for a missing file, the literal
+string `"False"` for a failed `eq`, and — reproduced live, against the
+founder's own `programs/qiskit-rust` — **the entire file's text** for a failed
+`contains`. Break `interface.txt`'s marker and `symbol` still bound the whole
+file; the next check then searched `bridge.rs` for that whole text, and the
+contradiction it reported named a "symbol" that was never a symbol.
+
+Fixed: only a `"pass"` binds. Verified by breaking it — reverting to `!=
+"refuse"` turns the new test red — and by re-running the exact counterexample:
+breaking `interface.txt` now produces `unbound $symbol`, not a corrupted
+search. `TestBinding.test_a_failed_check_never_binds_and_refusal_vetoes_any`
+covers both halves as one property, at the 17-case ceiling.
+
+**2. The whitespace-strip on substitution is a judgement call, and external
+review found the case it breaks.** Stripping makes `contains ... as p` →
+`exists $p` work at all; not stripping makes it faithful and useless. The
+case neither choice serves: `⊦ contains b.txt "" as tb` then `⊦ eq a.txt $tb` —
+"file a equals file b", the plainest cross-file assertion a specification
+language could want — can never pass for ordinary text files, because the
+strip removes exactly the trailing newline that made the comparison exact.
+Not fixed here. The reviewer's proposed shape is right: stripping is a
+property of the *argument's role* (a path should be stripped; an `eq`
+comparand should not), not a property of substitution itself — but that is a
+second axis on every check kind, not a one-line change, and it is left for
+the next pass rather than rushed. *Settled by: a per-role stripping rule, or a
+two-place value check (`⊦ same $a $b`) that compares bound values directly
+without going through argument substitution at all.*
 
 **3. `contains` binds the whole file, which is a lot of value for a check
-whose verdict is a substring test.** For a large file this is memory a checker
-did not ask for, and the name carries far more than the check examined.
-*Settled by: deciding whether the bound value should be the file text, the
-matched substring, or the match position.*
+whose verdict is a substring test — and external review showed this is not
+only inefficiency.** `⊦ contains large.log "ERROR: " as err` then
+`⊦ contains other.log $err` searches `other.log` for the *entire contents* of
+`large.log`, not for `"ERROR: "`. That is very likely never what a door author
+wants, and the language currently offers no other way to say it. *Settled by:
+binding the matched substring (or its position) instead of the whole read,
+which is a real behavior change to a shipped check and is deliberately not
+rushed into this pass.*
 
 **4. Hosted backends still weaken four canonical cells.** The labels are now
 honest but the runtimes are still wrong. `runtime/c/ya_ra.c` and the C++ twin

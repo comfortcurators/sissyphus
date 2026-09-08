@@ -86,7 +86,15 @@ def measure(
             require_provenance=require_provenance,
             env=env,
         )
-        if c.bind is not None and shot.status != "refuse":
+        # Only a PASS binds. A failed check answered "no" to its own question —
+        # binding that answer's incidental payload (None for a missing file,
+        # the string "False" for a failed eq, the whole file's text for a
+        # failed contains) let a wrong answer masquerade as data. Found by
+        # external review: interface.txt losing its `yara_` marker still bound
+        # `symbol` to the entire file, and the next check searched bridge.rs
+        # for that whole text — a contradiction naming a "symbol" that was
+        # never a symbol. Refuse or fail: no binding either way.
+        if c.bind is not None and shot.status == "pass":
             env[c.bind] = shot.value
         shots.append(shot)
 
