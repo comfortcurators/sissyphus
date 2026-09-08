@@ -1,0 +1,4 @@
+Intent : Shell records. It does not exec from a guess.
+Pattern: Action needs the durable route and a fixture.
+⊦ words intent <= 17
+⊦ words pattern <= 17

@@ -1,0 +1,4 @@
+Intent : Logic may propose. It does not decide.
+Pattern: Policy lists the route or the route is dead.
+⊦ words intent <= 17
+⊦ words pattern <= 17

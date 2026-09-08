@@ -1,0 +1,4 @@
+Intent : Output is what remains after the gate.
+Pattern: Persist a note. Do not persist a guess.
+⊦ words intent <= 17
+⊦ words pattern <= 17
