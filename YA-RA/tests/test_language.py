@@ -222,8 +222,35 @@ class TestBinding(unittest.TestCase):
         root = self._root()
         out = measure(parse((root / "b.YA-RA").read_text(encoding="utf-8")), root=root)
         self.assertTrue(out.ok)
-        # contains yields the READ TEXT, not a bool, or nothing could flow
-        self.assertEqual(out.shots[0].value, "target.txt\n")
+        # contains yields the MATCHED LINE, not the whole file — binding the
+        # whole read let a chained check search for far more than the match
+        self.assertEqual(out.shots[0].value, "target.txt")
+
+        # Multi-line proof: the fixture above is single-line, so a whole-file
+        # bind and a matched-line bind are indistinguishable there. This one
+        # is not, and it is the exact shape external review found live in
+        # programs/qiskit-rust: a real file with a marker line among others.
+        multi = Path(tempfile.mkdtemp())
+        (multi / "interface.txt").write_text(
+            "# ABI surface, do not edit by hand\n"
+            "yara_qpu_submit\n"
+            "# end\n",
+            encoding="utf-8",
+        )
+        (multi / "bridge.rs").write_text(
+            'pub extern "C" fn yara_qpu_submit() -> i32 { 0 }\n', encoding="utf-8"
+        )
+        (multi / "d.YA-RA").write_text(
+            "Intent : bind the line, not the file\n"
+            "Pattern: a real ABI file with comment noise around the symbol\n"
+            "\u22a6 contains interface.txt \"yara_\" as symbol\n"
+            "\u22a6 contains bridge.rs $symbol\n",
+            encoding="utf-8",
+        )
+        door2 = parse((multi / "d.YA-RA").read_text(encoding="utf-8"), source=str(multi))
+        out2 = measure(door2, root=multi)
+        self.assertEqual(out2.shots[0].value, "yara_qpu_submit")
+        self.assertTrue(out2.ok)
 
         # and it is Pattern: point the manifest elsewhere and it contradicts
         broken = self._root(manifest="nothing.txt\n")

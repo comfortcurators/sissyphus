@@ -223,10 +223,22 @@ def _run_one(
         if not p.is_file():
             return Shot(False, f"missing {c.args[0]}", c.amp, c.kind, "fail")
         text = p.read_text(encoding="utf-8", errors="replace")
-        ok = c.args[1] in text
-        # The value is the file's text, not the verdict. A bool cannot flow:
-        # binding exists so a later check can use what this one READ.
-        return Shot(ok, "ok" if ok else f"{c.args[0]} does not contain {c.args[1]!r}", c.amp, c.kind, "pass" if ok else "fail", text)
+        idx = text.find(c.args[1])
+        ok = idx != -1
+        # The value is the LINE the match was found on, not the whole file.
+        # Binding the whole read was the second design flaw external review
+        # found: `⊦ contains interface.txt "yara_" as symbol` bound the
+        # entire file, and it only ever worked because interface.txt happened
+        # to contain nothing else — a coincidence, not a guarantee. A later
+        # `contains bridge.rs $symbol` should search for the declaration line,
+        # not for every byte of the file it came from.
+        if ok:
+            start = text.rfind("\n", 0, idx) + 1
+            end = text.find("\n", idx)
+            value: object = text[start:] if end == -1 else text[start:end]
+        else:
+            value = None
+        return Shot(ok, "ok" if ok else f"{c.args[0]} does not contain {c.args[1]!r}", c.amp, c.kind, "pass" if ok else "fail", value)
     if c.kind == "eq":
         try:
             p = confined(root, c.args[0])
