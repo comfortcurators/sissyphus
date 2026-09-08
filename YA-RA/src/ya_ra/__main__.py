@@ -92,6 +92,10 @@ def main(argv: list[str] | None = None) -> int:
             print(f"YA|RA {door.rv} measured ok")
             print(f"born {out.born:.6f} (observational)")
             print(f"Z {out.z}")
+            if out.aforementioned:
+                print("what is :", out.what_is)
+                print("what became:", out.what_became)
+                print("aforementioned:", out.aforementioned)
             return 0
         for err in out.refusals:
             print("refused:", err, file=sys.stderr)
@@ -104,6 +108,8 @@ def main(argv: list[str] | None = None) -> int:
         sys.stdout.write(result.wire())
         return 0 if result.error is None else 1
 
+    if args.to == "wasm":
+        measure(door, root=root)
     try:
         code = emit(door, args.to)
     except UnsupportedSemantic as e:
