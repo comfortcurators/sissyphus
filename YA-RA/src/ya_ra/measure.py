@@ -50,6 +50,7 @@ def measure(
     _stack: tuple[str, ...] = (),
     *,
     allow_run: bool = False,
+    allow_write: bool = False,
     require_provenance: bool = False,
     action_is_door: bool = False,
 ) -> Outcome:
@@ -69,7 +70,14 @@ def measure(
         refusals.append("missing provenance")
 
     for c in door.checks:
-        shots.append(_run_one(door, c, root, _stack, allow_run=allow_run, require_provenance=require_provenance))
+        shots.append(
+            _run_one(
+                door, c, root, _stack,
+                allow_run=allow_run,
+                allow_write=allow_write,
+                require_provenance=require_provenance,
+            )
+        )
 
     for s in shots:
         if s.status == "refuse":
@@ -90,12 +98,21 @@ def measure(
         refusals.append(cut.reason)
     ok = checks_ok and not errors and not refusals
     what_is, what_became, aforementioned = _plane(door, root)
+    # `run` needs --allow-run; writing a file is no smaller a side effect, and
+    # for rv0.3 it shipped with no gate at all. A capability of its own rather
+    # than reusing --allow-run: executing a command and writing into the measure
+    # root are separately grantable, and conflating them would mean anyone who
+    # wanted `run` silently got a writer too.
     if ok and (door.cura or door.universe) and aforementioned:
-        (root / "aforementioned.YA-RA").write_text(
-            "Intent : What is was seen. Change already moved.\n"
-            "Pattern: weaved within aforementioned.\n",
-            encoding="utf-8",
-        )
+        if allow_write:
+            (root / "aforementioned.YA-RA").write_text(
+                "Intent : What is was seen. Change already moved.\n"
+                "Pattern: weaved within aforementioned.\n",
+                encoding="utf-8",
+            )
+        else:
+            refusals.append("write refused: need --allow-write")
+            ok = False
     return Outcome(
         ok=ok,
         shots=shots,
@@ -119,6 +136,7 @@ def _run_one(
     stack: tuple[str, ...],
     *,
     allow_run: bool,
+    allow_write: bool = False,
     require_provenance: bool,
 ) -> Shot:
     if c.kind == "words":
@@ -177,6 +195,7 @@ def _run_one(
             root=path.parent,
             _stack=stack + (key,),
             allow_run=allow_run,
+            allow_write=allow_write,
             require_provenance=require_provenance,
         )
         if out.refusals:

@@ -43,6 +43,7 @@ def main(argv: list[str] | None = None) -> int:
     pm = sub.add_parser("measure")
     add_src(pm)
     pm.add_argument("--allow-run", action="store_true", help="permit run checks")
+    pm.add_argument("--allow-write", action="store_true", help="permit cura/universe to write aforementioned.YA-RA")
     pm.add_argument("--require-provenance", action="store_true", help="refuse unsigned expressions")
     pm.add_argument("--action", action="store_true", help="treat the input as the unsigned integral; the cut refuses")
 
@@ -85,6 +86,7 @@ def main(argv: list[str] | None = None) -> int:
             door,
             root=root,
             allow_run=args.allow_run,
+            allow_write=args.allow_write,
             require_provenance=args.require_provenance,
             action_is_door=args.action,
         )
