@@ -84,6 +84,9 @@ def parse(src: str, source: str = "") -> Door:
         if s.lower() == "universe":
             door.universe = True
             continue
+        if s.lower() == "cura":
+            door.cura = True
+            continue
         if _RV.match(s):
             door.rv = "rv" + _RV.match(s).group(1)
             continue
