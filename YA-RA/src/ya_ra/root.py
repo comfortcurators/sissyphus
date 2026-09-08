@@ -1,4 +1,4 @@
-"""Assemble a door from the five files at the root of sissyphus."""
+"""Assemble Intent | Pattern from the five files. Git author is observed attribution."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ import datetime
 import subprocess
 from pathlib import Path
 
-from .ast import Check, Door, RV
+from .ast import Check, Door, Envelope, RV
 from .types import typecheck
 
 
@@ -28,7 +28,7 @@ def from_root(root: Path) -> Door:
     glimpse = (root / "Glimpse").read_text(encoding="utf-8")
     readme = (root / "README.md").read_text(encoding="utf-8") if (root / "README.md").is_file() else ""
 
-    signer, timestamp = _signed(root)
+    env = _envelope(root)
     checks = [
         Check("words", ["intent", "17"]),
         Check("words", ["pattern", "17"]),
@@ -39,8 +39,7 @@ def from_root(root: Path) -> Door:
     door = Door(
         intent=intent,
         pattern=pattern,
-        signer=signer,
-        timestamp=timestamp,
+        envelope=env,
         rv=RV,
         measure="all",
         zero=("00" in readme) or ("      0" in readme),
@@ -51,7 +50,7 @@ def from_root(root: Path) -> Door:
     return typecheck(door)
 
 
-def _signed(root: Path) -> tuple[str, str]:
+def _envelope(root: Path) -> Envelope:
     try:
         r = subprocess.run(
             ["git", "log", "-1", "--format=%an%n%ad", "--date=short", "--", "Intent"],
@@ -65,7 +64,12 @@ def _signed(root: Path) -> tuple[str, str]:
     if r is not None and r.returncode == 0:
         lines = [ln.strip() for ln in r.stdout.splitlines() if ln.strip()]
         if len(lines) >= 2:
-            return lines[0], lines[1]
+            return Envelope(
+                kind="git-author",
+                actor=lines[0],
+                timestamp=lines[1],
+                note="git log of Intent is observed attribution, not a cryptographic signature",
+            )
     intent = root / "Intent"
     ts = datetime.datetime.utcfromtimestamp(intent.stat().st_mtime).strftime("%Y-%m-%d")
-    return "root", ts
+    return Envelope(kind="mtime", actor="root", timestamp=ts, note="filesystem mtime fallback")
